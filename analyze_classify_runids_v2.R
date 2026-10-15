@@ -5,6 +5,11 @@ require(quitte)
 source("common.R")
 ensure_results_dirs()
 
+# Budget to be used for the actual classification of the run_ids. 
+# The indexes are calculated for all budgets, 
+# but the tables and figures are made for this budget only 
+usebudget <- 500
+
 # Use this if you had to rerun the climate model and didn't run the coresows specific one
 # TRUE: redo the filtering of the full climate output by the selected ensemble members
 # and write the coresows file. FALSE: read the coresows file directly
@@ -62,12 +67,12 @@ sceninfo <- allclimscens %>%
 
 climdf <- left_join(sceninfo, inclimdf) %>%
     filter(budgtype %in% c("Pb","Eb")) %>%
-    filter(cbudget == 500)
+    filter(cbudget == usebudget)
 
 inemisdf <- read.quitte(emisfname) %>%
     left_join(sceninfo,.) %>%
     filter(budgtype %in% c("Pb","Eb")) %>%
-    filter(cbudget == 500)
+    filter(cbudget == usebudget)
 
 
 
@@ -175,10 +180,17 @@ allinds <- allinds %>%
     mutate(variable = "Net-zero warming", unit = "K") %>%
     bind_rows(allinds,.)
 
+allinds %>% filter(variable == "Peak warming year")
+allinds %>% filter(variable == "Peak warming")
+allinds %>%
+    filter(run_id == first(run_id)) 
+
 write.table(allinds,table_path("allinds"), sep = ";", row.names = F, quote = F)
-
-
-
+allinds %>%
+    select(-unit,-model,-region) %>%
+    pivot_wider(names_from = variable, values_from = value) %>%
+    write.table(table_path("allinds_wide"), sep = ";", row.names = F, quote = F)
+print(table_path("allinds_wide"))
 # ========================================================================
 # run_id characterization
 chardf <- allinds %>%
@@ -186,21 +198,19 @@ chardf <- allinds %>%
     select(variable,unit,run_id,value) %>% 
     # select(variable) %>% unique
     calc_addVariable(
-        `Relative reversibility` = "100*`Pb Peak warming`/`Eb EoC warming`",
+        `Relative reversibility` = "100*`Pb Peak warming`/`Pb EoC warming`",
         unit = "%",
         na.rm = F,only.new = F) %>%
     calc_addVariable(
-        `Absolute reversibility` = "`Pb Peak warming`-`Eb EoC warming`",
+        `Absolute reversibility` = "`Pb Peak warming`-`Pb EoC warming`",
         unit = "K",
         na.rm = F,only.new = F) %>%
     calc_addVariable(
         `Pb ZEC` = "`Pb Peak warming`-`Pb Net-zero warming`",
-        `Eb ZEC` = "`Eb Peak warming`-`Eb Net-zero warming`",
         unit = "K",
         na.rm = F,only.new = F) %>%
     calc_addVariable(
         `Pb Peak warming delay` = "`Pb Peak warming year`-`Pb Net-zero year`",
-        `Eb Peak warming delay` = "`Eb Peak warming year`-`Eb Net-zero year`",
         unit = "years",
         na.rm = F,only.new = F)
 
@@ -208,7 +218,6 @@ chardf %>%
     filter(str_detect(run_id,"full_")) %>%
     calc_addVariable(
         `Pb Peak warming delay` = "`Pb Peak warming year`-`Pb Net-zero year`",
-        `Eb Peak warming delay` = "`Eb Peak warming year`-`Eb Net-zero year`",
         unit = "years",
         na.rm = F,only.new = T) 
 
@@ -259,7 +268,7 @@ pltdf %>%
     geom_hline(yintercept = c(90,100,110,120,130,140)) +
     geom_vline(xintercept = c(1.5,1.6,1.7,1.8,1.9,2.0), color = "grey40")
 ggsave(figure_path("class_PkW_RelRev"))
-
+print(figure_path("class_PkW_RelRev"))
 
 pltdf <- chardf %>%
     select(-unit) %>%
@@ -282,22 +291,26 @@ pltdf %>%
     geom_hline(yintercept = c(0.1,0.3)) +
     geom_vline(xintercept = c(1.5,1.7), color = "grey40")
 ggsave(figure_path("class_PkW_AbsRev"))
-
-sowlabeller <- c(
-    "78"  = "wH_rL",
-    "158" = "wH_rL",
-    "168" = "wH_rL",
-    "213" = "wH_rL",
-    "224" = "wH_rL",
-    "267" = "wH_rL",
-    "320" = "wH_rL",
-    "324" = "wH_rL",
-    "355" = "wH_rL",
-    "396" = "wH_rL"
-)
+print(figure_path("class_PkW_AbsRev"))
 
 
+# sowlabeller <- c(
+#     "78"  = "wH_rL",
+#     "158" = "wH_rL",
+#     "168" = "wH_rL",
+#     "213" = "wH_rL",
+#     "224" = "wH_rL",
+#     "267" = "wH_rL",
+#     "320" = "wH_rL",
+#     "324" = "wH_rL",
+#     "355" = "wH_rL",
+#     "396" = "wH_rL"
+# )
 
+
+
+# Here we classify the run_ids based on the indexes calculated above, 
+# and assign a runcode to each run_id. 
 dfruncodes <- chardf %>%
     select(-unit) %>%
     pivot_wider(names_from = variable, values_from = value) %>%
@@ -338,7 +351,7 @@ pltdf %>%
     # geom_hline(yintercept = c(0.1,0.3)) +
     # geom_vline(xintercept = c(1.5,1.7), color = "grey40")
 ggsave(figure_path("class_PkW_AbsRev_runcodes"))
-
+print(figure_path("class_PkW_AbsRev_runcodes"))
 
 pltdf %>% 
     ggplot(aes(
@@ -360,6 +373,7 @@ pltdf %>%
     # geom_hline(yintercept = c(0.1,0.3)) +
     # geom_vline(xintercept = c(1.5,1.7), color = "grey40")
 ggsave(figure_path("class_PkW_ZEC_runcodes"))
+print(figure_path("class_PkW_ZEC_runcodes"))
 
 pltdf %>% 
     ggplot(aes(
@@ -381,7 +395,7 @@ pltdf %>%
     # geom_hline(yintercept = c(0.1,0.3)) +
     # geom_vline(xintercept = c(1.5,1.7), color = "grey40")
 ggsave(figure_path("class_PkW_Wdelay_runcodes"))
-
+print(figure_path("class_PkW_Wdelay_runcodes"))
 
 pltdf %>% 
     ggplot(aes(
@@ -403,15 +417,26 @@ pltdf %>%
     # geom_hline(yintercept = c(0.1,0.3)) +
     # geom_vline(xintercept = c(1.5,1.7), color = "grey40")
 ggsave(figure_path("class_Wdelay_PbZEC_runcodes"))
+print(figure_path("class_Wdelay_PbZEC_runcodes"))
 
 
 # Climate =============================================================== 
+# Forster et al. (https://essd.copernicus.org/articles/17/2641/2025/#section7)
+# 2015-2024 (inclusive) is 1.24 [1.11-1.35, very likely range] rel. to 1850-1900
+# 2005-2024 (inclusive) is 1.09 [0.93-1.20, very likely range] rel. to 1850-1900
+forster_start_year <- 2015
+forster_end_year <- 2024
+forster_warming_median <- 1.24
+forster_warming_lower <- 1.11
+forster_warming_upper <- 1.35
+
 
 left_join(sceninfo, sowclimdf) %>%
    filter(variable == "Surface Temperature (GSAT)") %>%
+   filter(period <= 2100) %>%
     # filter(run_id == 78) %>%
     # filter(budgtype!="Eb") %>%
-    filter(cbudget==500) %>%
+    filter(cbudget==usebudget) %>%
     left_join(dfruncodes) %>%
     # filter(between(period,2000,2100)) %>%
     ggplot(aes(x=period,y=value,
@@ -419,14 +444,41 @@ left_join(sceninfo, sowclimdf) %>%
             ) +
     geom_path() +
     geom_hline(yintercept = c(1.5), lty=2) +
-    geom_vline(xintercept = 2015, lty=2) +
+    # geom_vline(xintercept = 2015, lty=2) +
+    geom_segment(
+        x = forster_start_year, xend = forster_end_year,
+        y = forster_warming_upper, yend = forster_warming_upper,
+        color = "black", size = 0.5
+    ) +
+    geom_segment(
+        x = forster_start_year, xend = forster_end_year,
+        y = forster_warming_lower, yend = forster_warming_lower,
+        color = "black", size = 0.5
+    ) +
+    geom_segment(
+        x = forster_start_year+3, xend = forster_end_year-3,
+        y = forster_warming_median, yend = forster_warming_median,
+        color = "black", size = 0.5
+    ) +
+    geom_segment(
+        x = (forster_end_year+forster_start_year)/2, xend = (forster_end_year+forster_start_year)/2,
+        y = forster_warming_lower, yend = forster_warming_upper,
+        color = "black", size = 0.5
+    ) +
+    # geom_point(
+    #     x = (forster_end_year+forster_start_year)/2,
+    #     y = forster_warming_median,
+    #     shape = "+",
+    #     color = "black", size = 5.0
+    # ) +
+    # ylim(1.0,1.5) +
     # facet_wrap(~variable+unit+budgtype)
     facet_wrap(~variable+unit+budgtype) 
 ggsave(figure_path("temperature_single_500"), height = 5, width = 10)
+print(figure_path("temperature_single_500"))
+
 
 # Probability distributions ==========================================================================
-pltdf %>% colnames
-pltdf$runcode
 
 longdf <- pltdf %>%
     mutate(run_id = ifelse(!is.na(runcode), runcode, run_id)) %>%
