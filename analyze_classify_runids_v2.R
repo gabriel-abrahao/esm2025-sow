@@ -106,11 +106,11 @@ allinds <- climdf %>%
 # Emissions-related indexes
 cemisdf <- inemisdf %>%
     filter(variable %in% c(
-        "Emissions|CO2|MAGICC AFOLU",
-        "Emissions|CO2|MAGICC Fossil and Industrial"
+        "Emissions|CO2|Biosphere",
+        "Emissions|CO2|Fossil"
     )) %>%
     calc_addVariable(
-        `Emissions|CO2` = "`Emissions|CO2|MAGICC AFOLU` + `Emissions|CO2|MAGICC Fossil and Industrial`",
+        `Emissions|CO2` = "`Emissions|CO2|Biosphere` + `Emissions|CO2|Fossil`",
         unit = "MtCO2/yr", only.new = T
         ) %>%
     interpolate_missing_periods()
