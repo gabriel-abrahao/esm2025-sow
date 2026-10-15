@@ -5,18 +5,29 @@ require(quitte)
 source("common.R")
 ensure_results_dirs()
 
+# Use this if you had to rerun the climate model and didn't run the coresows specific one
 # TRUE: redo the filtering of the full climate output by the selected ensemble members
 # and write the coresows file. FALSE: read the coresows file directly
 REDO_CORESOWS_FILTER <- FALSE
+
 sowclimfname <- climate_output_coresows_path()
 fullclimfname <- climate_output_path()
 emisfname <- harmonized_emissions_path()
 
-# fullclimdf <- read.quitte(fullclimfname) %>%
-#     filter(region == "World") %>%
-#     select(-region,-model,-climate_model)
-# saveRDS(fullclimdf,cache_path("cache_fullclimdf"))
-fullclimdf <- readRDS(cache_path("cache_fullclimdf")) %>%
+# TRUE: read the full climate output (big file) and save it as a cache. FALSE: read the cache,
+# unless it does not exist yet, then it is made. It is the same cache as in analyze_chanceconstrained_criteria_v2.R,
+# with all regions and variables, so we filter it below
+redo_clim_cache <- FALSE
+climcachefname <- cache_path("cache_climate_output_fullar6")
+if (!file.exists(climcachefname) || redo_clim_cache) {
+    fullclimdf <- read.quitte(fullclimfname)
+    saveRDS(fullclimdf,climcachefname)
+} else {
+    fullclimdf <- readRDS(climcachefname)
+}
+fullclimdf <- fullclimdf %>%
+    filter(region == "World") %>%
+    select(-region,-model,-climate_model) %>%
     mutate(run_id = paste0("full_",run_id))
 
 if (REDO_CORESOWS_FILTER) {
@@ -32,6 +43,9 @@ sowclimdf <- read.quitte(sowclimfname) %>%
     filter(region == "World") %>%
     select(-region,-model,-climate_model)
 
+# This is OK because we added the full_ prefix to the run_id of the full climate output, 
+# so there is no overlap with the coresows run_ids.
+# Keeping them both makes it easier to operate on everything and filter later
 inclimdf = bind_rows(fullclimdf,sowclimdf)
 
 allclimscens <- inclimdf %>% select(scenario) %>% unique

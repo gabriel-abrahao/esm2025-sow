@@ -79,19 +79,25 @@ remind_run_dirs <- function(dir = REMIND_OUTPUT_DIR, prefix = REMIND_RUNS_PREFIX
   Sys.glob(file.path(dir, paste0(prefix, "*", suffix)))
 }
 
-# Harmonized (and infilled) emissions gathered from the REMIND runs, input to MAGICC
-# MAGICC repo: data/raw/scenarios-<SVERSION>/emissions_climate_output_<ensemble>_<SVERSION>.csv
-harmonized_emissions_path <- function(sversion = SVERSION, ensemble = ENSEMBLE, dir = RAW_DATA_DIR) {
-  in_name <- paste0("emissions_climate_output_", ensemble, "_", sversion, ".csv")
-  file.path(dir, paste0("scenarios-", sversion), in_name)
+# Harmonized (and infilled) emissions of the REMIND runs, input to MAGICC: the emissions extended to
+# 2250 that 0004_run_magicc_raw_v4.py writes (see emissions_extended_path), with the SCI (gcages)
+# harmonization of 0002_harmonize_emissions.py and its variable names. It replaces the file of the MAGICC repo,
+# data/raw/scenarios-<SVERSION>/emissions_climate_output_<ensemble>_<SVERSION>.csv
+harmonized_emissions_path <- function(sversion = SVERSION, dir = LOCAL_DATA_DIR) {
+  emissions_extended_path(sversion, dir)
 }
 
-# MAGICC output (climate output)
-# MAGICC repo: data/processed/scenarios-<SVERSION>/magicc-output_<name of the harmonized emissions file>.csv
-# (the doubled .csv.csv in the file name is as written by the MAGICC repo)
-climate_output_path <- function(sversion = SVERSION, ensemble = ENSEMBLE, dir = PROCESSED_DATA_DIR) {
-  in_name <- basename(harmonized_emissions_path(sversion, ensemble))
-  file.path(dir, paste0("scenarios-", sversion), paste0("magicc-output_", in_name, ".csv"))
+# MAGICC output (climate output) of this repository, made by 0004_run_magicc_raw_v4.py
+# data/scenarios-<SVERSION>/climate_output_<ensemble>_<SVERSION>.csv, with <ensemble> = "fullar6" (the 600
+# member ensemble, the default ENSEMBLE) or "coresows" (just the selected SoW members). It replaces the
+# output of the MAGICC repo (data/processed/scenarios-<SVERSION>/magicc-output_..._<SVERSION>.csv.csv)
+# The file name template is a plain string so the Python script can read it from here too
+# ({SVERSION} and {PARMODE} are replaced). This is the only place where the name is defined
+CLIMATE_OUTPUT_FNAME <- "climate_output_{PARMODE}_{SVERSION}.csv"
+climate_output_path <- function(sversion = SVERSION, ensemble = ENSEMBLE, dir = LOCAL_DATA_DIR) {
+  fname <- sub("{SVERSION}", sversion, CLIMATE_OUTPUT_FNAME, fixed = TRUE)
+  fname <- sub("{PARMODE}", ensemble, fname, fixed = TRUE)
+  file.path(dir, fname)
 }
 
 # Selected ensemble members and their weights (0004_select-ensemble-members.py of the MAGICC repo)
@@ -123,13 +129,12 @@ metrics_path <- function(id = CALCULATE_METRICS_ID, dir = PROCESSED_DATA_DIR) {
   file.path(dir, id, paste0(id, "_metrics.csv"))
 }
 
-# MAGICC output restricted to the selected ensemble members (core SOWs). Derived here from the
-# full climate output with the weights file, so it lives in this repository, not in the MAGICC repo
-# data/scenarios-<SVERSION>/magicc-output_emissions_climate_output_coresows_<SVERSION>_<id>.csv
-# <id> is the ensemble member selection ID, the prefix of the weights file
-climate_output_coresows_path <- function(sversion = SVERSION, id = SELECT_ENSEMBLE_MEMBERS_ID, dir = LOCAL_DATA_DIR) {
-  fname <- paste0("magicc-output_emissions_climate_output_coresows_", sversion, "_", id, ".csv")
-  file.path(dir, fname)
+# MAGICC output of just the selected ensemble members (core SOWs): the "coresows" output of
+# 0004_run_magicc_raw_v4.py (--parmode coresows), run with the parametrizations of 0003_select_parsets.py
+# (the members of the weights file of the selection). Before, it was the full climate output filtered by
+# the weights file (data/scenarios-<SVERSION>/magicc-output_emissions_climate_output_coresows_<SVERSION>_<id>.csv)
+climate_output_coresows_path <- function(sversion = SVERSION, dir = LOCAL_DATA_DIR) {
+  climate_output_path(sversion = sversion, ensemble = "coresows", dir = dir)
 }
 
 # Emissions extended to 2250 (the input of MAGICC), written by 0003_run_magicc_raw_v4.py

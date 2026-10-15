@@ -9,9 +9,13 @@ ensure_results_dirs()
 fullclimfname <- climate_output_path()
 fullclimrdsfname <- cache_path("cache_climate_output_fullar6")
 
-# inclim <- read.quitte(fullclimfname)
-# saveRDS(inclim, fullclimrdsfname)
-inclim <- readRDS(fullclimrdsfname)
+redo_cache <- FALSE
+if (!file.exists(fullclimrdsfname) || redo_cache) {
+  inclim <- read.quitte(fullclimfname)
+  saveRDS(inclim, fullclimrdsfname)
+} else {
+  inclim <- readRDS(fullclimrdsfname)
+}
 
 # Keep just temperature variable to make RAM more manageable
 inclim <- inclim %>% filter(variable == "Surface Temperature (GSAT)")
