@@ -62,6 +62,9 @@ scenariomip_path <- function(ext = "mif", sversion = SVERSION, dir = LOCAL_DATA_
 }
 # Folder with the per-scenario batches of that script (one rds, log and summation check per scenario)
 SCENARIOMIP_BATCH_DIR <- file.path(LOCAL_DATA_DIR, "scenariomip_batches")
+# MAGICC parametrizations. The full ensemble json and, in a subfolder per SELECT_ENSEMBLE_MEMBERS_ID,
+# the files of the selected ensemble members (copied from the MAGICC repo) and the json with just them
+PARAMETRIZATIONS_DIR <- file.path(REPO_ROOT_DIR, "parametrizations")
 # Tables, figures and caches produced by the analysis scripts
 RESULTS_DIR <- file.path(REPO_ROOT_DIR, "results", paste0("scenarios-", SVERSION))
 TABLES_DIR <- file.path(RESULTS_DIR, "tables")
@@ -91,10 +94,27 @@ climate_output_path <- function(sversion = SVERSION, ensemble = ENSEMBLE, dir = 
   file.path(dir, paste0("scenarios-", sversion), paste0("magicc-output_", in_name, ".csv"))
 }
 
-# Selected ensemble members and their weights (0004_select-ensemble-members.py)
-# MAGICC repo: data/processed/<id>/<id>_selected-ensemble-member-weights.csv
-selected_members_weights_path <- function(id = SELECT_ENSEMBLE_MEMBERS_ID, dir = PROCESSED_DATA_DIR) {
-  file.path(dir, id, paste0(id, "_selected-ensemble-member-weights.csv"))
+# Selected ensemble members and their weights (0004_select-ensemble-members.py of the MAGICC repo)
+# parametrizations/<id>/<id>_selected-ensemble-member-weights.csv, copied from data/processed/<id>/ of the MAGICC repo
+# The file name template is a plain string so 0003_select_parsets.py can read it from here too
+# ({ID} is replaced by the selection ID). This is the only place where the name is defined
+SELECTED_MEMBERS_WEIGHTS_FNAME <- "{ID}_selected-ensemble-member-weights.csv"
+selected_members_weights_path <- function(id = SELECT_ENSEMBLE_MEMBERS_ID, dir = PARAMETRIZATIONS_DIR) {
+  file.path(dir, id, sub("{ID}", id, SELECTED_MEMBERS_WEIGHTS_FNAME, fixed = TRUE))
+}
+
+# Full MAGICC ensemble (600 parametrizations, json): the AR7 fast track drawn set that comes with gcages
+# (MAGICC v7.6.0a3), copied to parametrizations/. Plain string so the Python scripts can read it from here too
+FULLENSEMBLE_PARSETS_FNAME <- "magicc-ar7-fast-track-drawnset-v0-3-0.json"
+fullensemble_parsets_path <- function(dir = PARAMETRIZATIONS_DIR) {
+  file.path(dir, FULLENSEMBLE_PARSETS_FNAME)
+}
+
+# MAGICC parametrizations (json) of just the selected ensemble members, made by 0003_select_parsets.py
+# and read by 0004_run_magicc_raw_v4.py for the coresows. Same template idea as above
+CORESOWS_PARSETS_FNAME <- "{ID}_coresows_parsets.json"
+coresows_parsets_path <- function(id = SELECT_ENSEMBLE_MEMBERS_ID, dir = PARAMETRIZATIONS_DIR) {
+  file.path(dir, id, sub("{ID}", id, CORESOWS_PARSETS_FNAME, fixed = TRUE))
 }
 
 # Metrics used for the selection (0010_calculate-metrics.py)
@@ -110,6 +130,15 @@ metrics_path <- function(id = CALCULATE_METRICS_ID, dir = PROCESSED_DATA_DIR) {
 climate_output_coresows_path <- function(sversion = SVERSION, id = SELECT_ENSEMBLE_MEMBERS_ID, dir = LOCAL_DATA_DIR) {
   fname <- paste0("magicc-output_emissions_climate_output_coresows_", sversion, "_", id, ".csv")
   file.path(dir, fname)
+}
+
+# Emissions extended to 2250 (the input of MAGICC), written by 0003_run_magicc_raw_v4.py
+# data/scenarios-<SVERSION>/emissions_extended_<SVERSION>.csv
+# The file name template is a plain string so the Python script can read it from here too
+# ({SVERSION} is replaced by the version). This is the only place where the name is defined
+EMISSIONS_EXTENDED_FNAME <- "emissions_extended_{SVERSION}.csv"
+emissions_extended_path <- function(sversion = SVERSION, dir = LOCAL_DATA_DIR) {
+  file.path(dir, sub("{SVERSION}", sversion, EMISSIONS_EXTENDED_FNAME, fixed = TRUE))
 }
 
 # Inputs of this repository
