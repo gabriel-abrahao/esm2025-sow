@@ -184,7 +184,7 @@ cemisdf %>%
     # filter(cbudget == 500) %>%
     filter(variable == "Emissions|CO2") %>%
     filter(between(period,2020,2099)) %>% #print(n=100)
-    ggplot(aes(x = period, y = value, color = cbudget)) +
+    ggplot(aes(x = period, y = value, color = cbudget, group = scenario)) +
     geom_path() +
     geom_hline(aes(yintercept = 0)) +
     facet_wrap(~budgtype, ncol =1) +
@@ -614,34 +614,48 @@ welfdf %>%
     write.table(table_path("table_Welfare_CR4"), sep = ";", quote = F, row.names = F)
 
 usedbudgetdf
-climdf %>%
+# Temperature of the climate response (run_id) of each runcode, in the scenario of its used budget.
+# Both the run_id and the used budget select the curve, so they are the keys of the join below
+climCR4df <- climdf %>%
     filter(budgtype == "Pb") %>%
-    left_join(labldf) %>%
+    filter(variable == "Surface Temperature (GSAT)") %>%
+    filter(between(period, 2020, 2100)) %>%
+    mutate(usedbudget = as.character(cbudget)) %>%
+    select(run_id, usedbudget, period, value)
+
+# We start from the runcodes (labldf), not from the temperatures, so that the runcodes that are infeasible
+# (NA in usedbudget) are kept: they find no temperatures in the join, and their panels are blank
+labldf %>%
     left_join(usedbudgetdf) %>%
-    mutate(runcode == as.character(runcode)) %>%
+    left_join(climCR4df, by = c("run_id", "usedbudget")) %>%
     arrange(ord1,ord2) %>%
     mutate(runcode = fct_reorder(runcode,ord1)) %>%
-    filter(cbudget == usedbudget) %>%
-    filter(variable == "Surface Temperature (GSAT)") %>%
-    filter(between(period, 2020, 2100)) %>% #select(runcode,ord1,ord2) %>% print(n=1000)
     ggplot(aes(x=period,y=value)) +
     geom_path() +
     geom_hline(yintercept = c(1.5)) +
-    facet_wrap(~runcode+cbudget, nrow = 2)
+    facet_wrap(~runcode+usedbudget, nrow = 2)
 ggsave(figure_path("temperature_CR4"), height = 6, width = 12)
 
-
-cemisdf %>%
+# Emissions|CO2 of the scenario used for each runcode, in the same panels as the temperature plot above.
+# The emissions only depend on the scenario (the used budget), so runcodes that share a budget share the curve.
+emisCR4df <- cemisdf %>%
+    left_join(., sceninfo) %>%
     filter(budgtype == "Pb") %>%
+    filter(variable == "Emissions|CO2") %>%
+    filter(between(period, 2020, 2100)) %>%
+    mutate(usedbudget = as.character(cbudget)) %>%
+    select(usedbudget, period, value)
+
+# We start from the runcodes (labldf), not from the emissions, so that the runcodes that are infeasible
+# (NA in usedbudget) are kept: they find no emissions in the join, and their panels are blank
+labldf %>%
     left_join(usedbudgetdf) %>%
-    mutate(runcode == as.character(runcode)) %>%
+    left_join(emisCR4df, by = "usedbudget", relationship = "many-to-many") %>%
     arrange(ord1,ord2) %>%
     mutate(runcode = fct_reorder(runcode,ord1)) %>%
-    filter(cbudget == usedbudget) %>%
-    filter(variable == "Surface Temperature (GSAT)") %>%
-    filter(between(period, 2020, 2100)) %>% #select(runcode,ord1,ord2) %>% print(n=1000)
     ggplot(aes(x=period,y=value)) +
     geom_path() +
-    geom_hline(yintercept = c(1.5)) +
-    facet_wrap(~runcode+cbudget, nrow = 2)
-ggsave(figure_path("temperature_CR4"), height = 6, width = 12)
+    geom_hline(yintercept = c(0)) +
+    facet_wrap(~runcode+usedbudget, nrow = 2) +
+    ylab("Emissions|CO2 (MtCO2/yr)")
+ggsave(figure_path("emissions_CR4"), height = 6, width = 12)
