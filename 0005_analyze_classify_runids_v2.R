@@ -323,6 +323,10 @@ dfruncodes <- chardf %>%
     mutate(runcode = paste0("P",pwrank,"_R",arrank)) %>%
     select(run_id,runcode)
 write.csv(dfruncodes,runcode_path("PbPW_AbsRev"),row.names = F)
+print(dfruncodes)
+print(runcode_path("PbPW_AbsRev"))
+
+# Extra plots =======================================================================
 
 pltdf <- chardf %>%
     select(-unit) %>%
