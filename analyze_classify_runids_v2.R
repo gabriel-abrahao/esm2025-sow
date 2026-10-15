@@ -115,9 +115,14 @@ cemisdf <- inemisdf %>%
         ) %>%
     interpolate_missing_periods()
 
+# Cumulated emissions, from 2020 inclusive: the value in 2020 is the emissions of 2020 itself.
 cemisdf <- cemisdf %>%
     filter(period >= 2020) %>%
-    calcCumulatedDiscount(nameVar = "Emissions|CO2", discount = 0) %>%
+    filter(variable == "Emissions|CO2") %>%
+    group_by(across(-c("period","value"))) %>%
+    arrange(period, .by_group = TRUE) %>%
+    mutate(value = cumsum(value)) %>%
+    ungroup() %>%
     mutate(value = 1e-3*value, unit = "GtCO2") %>%
     tibble %>% mutate(variable = "Emissions|CO2|Cumulated") %>%
     bind_rows(cemisdf) 
