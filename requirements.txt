@@ -1,0 +1,29 @@
+# Python packages for the esm2025-sow environment (install with `make venv`).
+# gcages itself is NOT listed here: the Makefile clones it and installs it editable ([full] extras).
+
+# Scientific stack
+numpy
+scipy
+pandas
+statsmodels
+scikit-learn
+xarray==2025.9.0   # pinned: newer xarray breaks scmdata (removed ops.inject_reduce_methods); older lacks xarray.computation
+netcdf4
+pyarrow
+openpyxl
+
+# Visualization
+matplotlib
+seaborn
+plotly
+
+# Notebooks
+jupyterlab
+jupytext
+ipykernel
+
+# Climate-model tooling (also pulled in by gcages[full], listed for clarity)
+pandas-indexing
+pandas-openscm
+pymagicc
+openscm-runner

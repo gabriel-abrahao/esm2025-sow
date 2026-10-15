@@ -2,6 +2,12 @@
 cmem/
 ctemp/
 
+# Main data files
+data/
+
+# SLURM logs
+logs/
+
 # History files
 .Rhistory
 .Rapp.history
