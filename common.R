@@ -50,6 +50,18 @@ REMIND_RUNS_SUFFIX <- "-rem-5"
 # Hand-made or REMIND-derived inputs that do not come from the MAGICC repo
 # (runcode labels, welfare), versioned by SVERSION
 LOCAL_DATA_DIR <- file.path(REPO_ROOT_DIR, "data", paste0("scenarios-", SVERSION))
+# Raw REMIND reporting files (.mif) copied from REMIND_OUTPUT_DIR by 0000_gather-rawmifs.R
+RAWMIFS_DIR <- file.path(LOCAL_DATA_DIR, "rawmifs")
+# All the raw .mif files concatenated in one file (extension "mif" or "rds"), beside the rawmifs folder
+allmifs_path <- function(ext = "mif", sversion = SVERSION, dir = LOCAL_DATA_DIR) {
+  file.path(dir, paste0("rawmifs_all_", sversion, ".", ext))
+}
+# ScenarioMIP-formatted submission (extension "xlsx", "mif" or "rds") made by 0001_apply_scenariomip_mapping.R
+scenariomip_path <- function(ext = "mif", sversion = SVERSION, dir = LOCAL_DATA_DIR) {
+  file.path(dir, paste0("scenariomip_", sversion, ".", ext))
+}
+# Folder with the per-scenario batches of that script (one rds, log and summation check per scenario)
+SCENARIOMIP_BATCH_DIR <- file.path(LOCAL_DATA_DIR, "scenariomip_batches")
 # Tables, figures and caches produced by the analysis scripts
 RESULTS_DIR <- file.path(REPO_ROOT_DIR, "results", paste0("scenarios-", SVERSION))
 TABLES_DIR <- file.path(RESULTS_DIR, "tables")
