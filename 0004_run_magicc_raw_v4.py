@@ -14,7 +14,7 @@ import re
 import argparse
 import multiprocessing
 from gcages.cmip7_scenariomip.harmonisation import load_cmip7_scenariomip_historical_emissions
-from gcages.cmip7_scenariomip.scm_running import CMIP7ScenarioMIPSCMRunner
+from gcages.cmip7_scenariomip.scm_running import CMIP7ScenarioMIPSCMRunner, get_complete_scenarios_for_magicc
 from gcages.renaming import SupportedNamingConventions, convert_variable_name
 from gcages.scm_running import convert_openscm_runner_output_names_to_magicc_output_names
 from pandas_openscm.index_manipulation import update_index_levels_func
@@ -65,7 +65,9 @@ baseparsetsfname = baseparsetsfnames[parmode]
 
 # outfname = "climate_output_coresows_v2.csv"
 # outfname = "climate_output_fullar6_v2.csv"
-outfname = "climate_output_" + parmode + "_" + SVERSION + ".csv"
+# The file name template is defined in common.R (CLIMATE_OUTPUT_FNAME), so that other scripts find this file
+outfname = re.search(r'^CLIMATE_OUTPUT_FNAME\s*<-\s*"([^"]+)"', open("common.R").read(), re.M).group(1)
+outfname = outfname.replace("{SVERSION}", SVERSION).replace("{PARMODE}", parmode)
 
 # allrunsdir = "output/"
 # allemicsvpaths = glob.glob(allrunsdir + "/*/climate-assessment-data/ar6_climate_assessment_*_harmonized_infilled.csv")
@@ -106,18 +108,6 @@ for exy in range(exyref+1,exyend+1):
     allscens[pd.Timestamp(str(exy)+'-01-01 00:00:00')] = allscens[pd.Timestamp(str(exyref)+'-01-01 00:00:00')]
 
 #%%
-# Write extended emissions to a single file, so that it can be used by other scripts 
-outallscens = copy.deepcopy(allscens)
-yearcols = [i.year if isinstance(i,pd.Timestamp) else i for i in outallscens.columns.values]
-outallscens.columns = yearcols
-
-
-# The file name template is defined in common.R (EMISSIONS_EXTENDED_FNAME), so that other scripts find this file
-emissionsextfname = re.search(r'^EMISSIONS_EXTENDED_FNAME\s*<-\s*"([^"]+)"', open("common.R").read(), re.M).group(1)
-emissionsextfname = emissionsextfname.replace("{SVERSION}", SVERSION)
-outallscens.to_csv(datadir + emissionsextfname, index = False)
-
-#%%
 # Emissions extension: past
 # The scenarios start in 2023, but MAGICC needs emissions from 2015 (when it switches from its
 # internal history to the scenario data). The runner below adds the history to the scenarios.
@@ -127,6 +117,9 @@ outallscens.to_csv(datadir + emissionsextfname, index = False)
 # because the CMIP7ScenarioMIPSCMRunner does it for us. 
 # We just need to give it the history as a ScmRun, and it will add it to the scenarios 
 # before running MAGICC.
+#
+# We also append the history manually (from 2000), but only to the copy of the emissions that is
+# written to the file, because other scripts need it to calculate cumulative emissions.
  
 histfname = "gcages/tests/regression/cmip7-scenariomip/cmip7-scenariomip-workflow-inputs/history_cmip7_scenariomip.csv"
 history = load_cmip7_scenariomip_historical_emissions(filepath = histfname, check_hash = True)
@@ -138,6 +131,27 @@ history = update_index_levels_func(
         to_convention = SupportedNamingConventions.GCAGES)}
 )
 history = history.reset_index(level = [l for l in ["model", "scenario"] if l in history.index.names], drop = True)
+
+#%%
+# Write extended emissions to a single file, so that it can be used by other scripts 
+outallscens = copy.deepcopy(allscens)
+yearcols = [i.year if isinstance(i,pd.Timestamp) else i for i in outallscens.columns.values]
+outallscens.columns = yearcols
+
+# Append the history from 2000 up to the year before the scenarios start (2022) to a copy, extoutallscens.
+# outallscens and history are not changed (outallscens is what the MAGICC runner uses below).
+# magicc_start_year is just the name the function gives to the first year of the history to append
+extoutallscens = get_complete_scenarios_for_magicc(
+    scenarios = outallscens.set_index(["model", "scenario", "region", "variable", "unit"]),
+    history = history,
+    magicc_start_year = 2000,
+).reset_index()
+
+
+# The file name template is defined in common.R (EMISSIONS_EXTENDED_FNAME), so that other scripts find this file
+emissionsextfname = re.search(r'^EMISSIONS_EXTENDED_FNAME\s*<-\s*"([^"]+)"', open("common.R").read(), re.M).group(1)
+emissionsextfname = emissionsextfname.replace("{SVERSION}", SVERSION)
+extoutallscens.to_csv(datadir + emissionsextfname, index = False)
 
 #%%
 # Read original parameter set
